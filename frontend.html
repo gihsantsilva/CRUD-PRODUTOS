@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadastramento de Produtos</title>
+    <!-- Importando estilos do Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+</head>
+
+<body class="container mt-5">
+    <h2>Cadastramento de Produtos</h2>
+    <!-- Formulário para adicionar/editar produtos -->
+    <form id="productForm" class="my-4">
+        <div class="form-group">
+            <input type="number" id="id" class="form-control" placeholder="ID" required />
+        </div>
+        <div class="form-group">
+            <input type="text" id="modelo" class="form-control" placeholder="Modelo" required />
+        </div>
+        <div class="form-group">
+            <input type="number" id="valor" class="form-control" placeholder="Valor" required />
+        </div>
+        <div class="form-group" >
+            <input type="text" id="quantidade" class="form-control" placeholder="Quantidade" required />
+        </div> 
+        <button type="submit" class="btn btn-primary">Cadastrar</button>
+        <button type="button" id="cancelBtn" class="btn btn-secondary" style="display: none">
+            Cancelar
+        </button>
+    </form>
+    <!-- Tabela para listar produtos -->
+    <table class="table table-bordered">
+
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Modelo</th>
+                <th>Valor</th>
+                <th>Quantidade</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="produtoForm"></tbody>
+    </table>
+    <script>
+        // Array para armazenar produtos do servidor
+        let produtos = [];
+        // ID do produto em edição
+        let produtoAtual = null;
+        // Função para exibir produto na tabela
+        function displayProdutos() {
+            const tbody = document.getElementById("produtoForm");
+            tbody.innerHTML = "";
+            produtos.forEach((produto) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+
+<td>${produto.id}</td>
+<td>${produto.modelo}</td>
+<td>${produto.valor}</td>
+<td>${produto.quantidade}</td>
+<td>
+<button class="btn btn-warning btn-sm"
+
+onclick="editProduto(${produto.id})">Alterar</button>
+
+<button class="btn btn-danger btn-sm"
+onclick="deleteProduto(${produto.id})">Remover</button>
+
+</td>
+`;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Carrega produtos do servidor ao carregar a página
+       async function consultarBanco () {
+        await fetch("http://localhost:3000/produtos")
+            .then((response) => response.json())
+            .then((data) => {
+                produtos = data;
+            })
+            .catch((error) => console.error("Error:", error));
+            displayProdutos();
+        }
+        
+        // Função para carregar um produto no formulário para edição
+        function editProduto(id) {
+            produtoAtual = id;
+            const produto = produtos.find((p) => p.id === id);
+            document.getElementById("id").value = produto.id || "";
+            document.getElementById("modelo").value = produto.modelo || "";
+            document.getElementById("valor").value = produto.valor || "";
+            document.getElementById("quantidade").value = produto.quantidade || "";
+            // Mostra o botão cancelar durante a edição
+            document.getElementById("cancelBtn").style.display = "inline-block";
+        }
+
+        function reset() {
+                document.getElementById("id").value = "";
+                document.getElementById("modelo").value = "";
+                document.getElementById("valor").value = "";
+                document.getElementById("quantidade").value = "";
+            }
+
+            // Função para remover produto do servidor e atualizar a lista
+        function deleteProduto(id) {
+            fetch("http://localhost:3000/produtos/" + id, {
+                method: "DELETE",
+            })
+                .then(() => {
+
+                    reset();
+                    consultarBanco();
+                })
+                .catch((error) => console.error("Error:", error));
+        }
+
+
+        // Evento para lidar com o envio do formulário
+        document
+            .getElementById("productForm")
+            .addEventListener("submit", function (event) {
+                event.preventDefault();
+
+                // Coleta os valores do formulário
+                const produto= {
+                    id: parseInt(document.getElementById("id").value),
+                    modelo: document.getElementById("modelo").value,
+                    valor: document.getElementById("valor").value,
+                    quantidade: document.getElementById("quantidade").value,
+                };
+                if (produtoAtual) {
+                    // Se estiver editando
+                    fetch("http://localhost:3000/produtos/" + produtoAtual, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(produto),
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            const index = produtos.findIndex((p) => p.id === produtoAtual);
+                            produtos[index] = data;
+                            consultarBanco();
+
+                            // Limpa o formulário e reseta o produto em edição
+                            document.getElementById("produtoForm");
+                            produtoAtual = null;
+                            document.getElementById("cancelBtn").style.display = "none";
+                        })
+                        .catch((error) => console.error("Error:", error));
+                } else {
+
+                    // Se for um novo produto
+                    fetch("http://localhost:3000/produtos", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(produto),
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            produtos.push(data);
+                            consultarBanco();
+                            document.getElementById("produtoForm");
+                        })
+                        .catch((error) => console.error("Error:", error));
+
+                }
+            });
+
+        // Cancela a edição e limpa o formulário
+    document
+        .getElementById("cancelBtn")
+        .addEventListener("click", function () {
+            produtoAtual = null;
+            reset(); // Chamando a função reset() para limpar os campos
+            this.style.display = "none";
+        });
+
+
+        consultarBanco();
+
+    </script>
+    <!-- Bibliotecas JS auxiliares (Bootstrap requer jQuery e Popper.js) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
+</body>
+
+</html>
